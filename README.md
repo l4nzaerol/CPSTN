@@ -1,37 +1,31 @@
-composer install 
-cd unick-backend
+# Unick System
 
-# Install required packages
-composer require laravel/sanctum
-composer require spatie/laravel-permission
-composer require barryvdh/laravel-dompdf
-composer require maatwebsite/excel
-composer require pusher/pusher-php-server
+## Backend (Laravel)
 
-# Install development dependencies
-composer require --dev laravel/telescope
-# Create new Laravel project
-composer create-project laravel/laravel unick-backend
-cd unick-backend
+Requirements: PHP 8.2+, Composer, Node 20+
 
-# Install required packages
-composer require laravel/sanctum
-composer require spatie/laravel-permission
-composer require barryvdh/laravel-dompdf
-composer require maatwebsite/excel
-composer require pusher/pusher-php-server
+Setup:
 
-FRONTEND 
-npm install 
-cd unick-frontend
-npm install react-router-dom
-npm install bootstrap react-bootstrap
-npm install axios
-npm install chart.js react-chartjs-2
-npm install @hookform/resolvers yup react-hook-form
-npm install react-toastify
-npm install socket.io-client
-npm install @fortawesome/fontawesome-free
-npm install moment
-npm install react-select
-npm install react-datepicker
+- cd `unick-backend`
+- composer install
+- cp .env.example .env (if exists) and set `DB_CONNECTION=sqlite` (or your RDBMS). For sqlite: `touch database/database.sqlite`.
+- php artisan key:generate
+- php artisan migrate
+- php artisan serve (serves on http://127.0.0.1:8000)
+
+## Frontend (React)
+
+Requirements: Node 20+
+
+Setup:
+
+- cd `unick-frontend`
+- npm install
+- Create `.env` if needed with `REACT_APP_API_URL=http://localhost:8000/api`
+- npm start (serves on http://localhost:3000)
+
+## Notes
+
+- Login/register endpoints: `/api/login`, `/api/register`
+- Authenticated APIs require Bearer token via Laravel Sanctum
+- Example roles: `admin`, `staff`, `customer`
