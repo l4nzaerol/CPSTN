@@ -1,5 +1,4 @@
 <?php
-// app/Http/Controllers/Api/AuthController.php
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
@@ -29,53 +28,65 @@ class AuthController extends Controller
         $token = $user->createToken('auth-token')->plainTextToken;
 
         return response()->json([
-            'user' => $user->load('customer'),
-            'token' => $token
+            'token' => $token,
+            'user' => [
+                'id'       => $user->id,
+                'name'     => $user->name,
+                'email'    => $user->email,
+                'role'     => $user->role, // 👈 use role instead of is_admin
+                'customer' => $user->customer ?? null,
+            ]
         ]);
     }
 
     public function register(Request $request)
     {
         $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|string|email|unique:users',
+            'name'     => 'required|string|max:255',
+            'email'    => 'required|string|email|unique:users',
             'password' => 'required|string|min:8|confirmed',
-            'phone' => 'nullable|string',
-            'address' => 'nullable|string',
+            'role'     => 'in:admin,customer', // 👈 validate role
+            'phone'    => 'nullable|string',
+            'address'  => 'nullable|string',
             'company_name' => 'nullable|string',
-            'tax_id' => 'nullable|string'
+            'tax_id'       => 'nullable|string'
         ]);
 
         $user = User::create([
-            'name' => $request->name,
-            'email' => $request->email,
+            'name'     => $request->name,
+            'email'    => $request->email,
             'password' => Hash::make($request->password),
-            'role' => 'customer',
-            'phone' => $request->phone,
-            'address' => $request->address,
+            'role'     => $request->role ?? 'customer', // 👈 default is customer
         ]);
 
-        // Create customer profile
-        Customer::create([
-            'user_id' => $user->id,
-            'company_name' => $request->company_name,
-            'tax_id' => $request->tax_id,
-            'billing_address' => $request->address,
-            'shipping_address' => $request->address,
-        ]);
+        // If customer, create customer profile
+        if ($user->role === 'customer') {
+            Customer::create([
+                'user_id'         => $user->id,
+                'company_name'    => $request->company_name,
+                'tax_id'          => $request->tax_id,
+                'billing_address' => $request->address,
+                'shipping_address'=> $request->address,
+            ]);
+        }
 
         $token = $user->createToken('auth-token')->plainTextToken;
 
         return response()->json([
-            'user' => $user->load('customer'),
-            'token' => $token
+            'token' => $token,
+            'user'  => [
+                'id'       => $user->id,
+                'name'     => $user->name,
+                'email'    => $user->email,
+                'role'     => $user->role,
+                'customer' => $user->customer ?? null,
+            ]
         ], 201);
     }
 
     public function logout(Request $request)
     {
         $request->user()->currentAccessToken()->delete();
-
         return response()->json(['message' => 'Logged out successfully']);
     }
 

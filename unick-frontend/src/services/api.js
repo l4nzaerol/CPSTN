@@ -70,7 +70,7 @@ export const inventoryAPI = {
   getTransactions: (params) => api.get('/inventory/transactions', { params }),
 };
 
-export const productionAPI = {
+export const productionsAPI = {
   getBatches: (params) => api.get('/production-batches', { params }),
   getBatch: (id) => api.get(`/production-batches/${id}`),
   createBatch: (data) => api.post('/production-batches', data),

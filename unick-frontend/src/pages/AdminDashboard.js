@@ -1,22 +1,25 @@
 import { useEffect, useState } from 'react';
-import { inventoryAPI, ordersAPI, authAPI } from '../services/api';
-import { useNavigate } from 'react-router-dom';
+import { authAPI } from '../services/api';
+import { useNavigate, Routes, Route, Link } from 'react-router-dom';
+import ProductsPage from '../components/admin/ProductsPage';
+import OrdersPage from '../components/admin/OrdersPage';
+import ProductionsPage from '../components/admin/ProductionsPage';
+import InventoryPage from '../components/admin/InventoryPage';
+import ReportsPage from '../components/admin/ReportsPage';
+import '../pages/AdminDashboard.css';
 
 export default function AdminDashboard() {
 	const navigate = useNavigate();
-	const [lowStock, setLowStock] = useState({ raw_materials: [], products: [] });
-	const [orders, setOrders] = useState([]);
+	const [user, setUser] = useState(null);
 
 	useEffect(() => {
 		(async () => {
 			try {
-				await authAPI.profile();
-				const [ls, os] = await Promise.all([
-					inventoryAPI.getLowStock(),
-					ordersAPI.getAll({ per_page: 10 })
-				]);
-				setLowStock(ls.data);
-				setOrders(os.data.data || []);
+				const token = localStorage.getItem('auth_token');
+				if (!token) return navigate('/login', { replace: true });
+
+				const { data } = await authAPI.profile(token); // ✅ pass token
+				setUser(data.user || data);
 			} catch (e) {
 				navigate('/login', { replace: true });
 			}
@@ -31,35 +34,31 @@ export default function AdminDashboard() {
 	};
 
 	return (
-		<div style={{ padding: 20 }}>
-			<h2>Admin Dashboard</h2>
-			<button onClick={logout} style={{ float: 'right' }}>Logout</button>
-			<h3>Low Stock</h3>
-			<div style={{ display: 'flex', gap: 20 }}>
-				<div>
-					<h4>Raw Materials</h4>
-					<ul>
-						{(lowStock.raw_materials || []).map((m) => (
-							<li key={`rm-${m.id}`}>{m.name} (Stock: {m.current_stock}, Min: {m.minimum_stock})</li>
-						))}
-					</ul>
-				</div>
-				<div>
-					<h4>Products</h4>
-					<ul>
-						{(lowStock.products || []).map((p) => (
-							<li key={`p-${p.id}`}>{p.name} (Stock: {p.current_stock}, Min: {p.minimum_stock})</li>
-						))}
-					</ul>
-				</div>
-			</div>
+		<div className="admin-container">
+			{/* Sidebar */}
+			<aside className="sidebar">
+				<h2 className="sidebar-title">Admin Panel</h2>
+				<nav className="sidebar-nav">
+					<Link to="products">Products</Link>
+					<Link to="orders">Orders</Link>
+					<Link to="productions">Productions</Link>
+					<Link to="inventory">Inventory</Link>
+					<Link to="reports">Reports</Link>
+				</nav>
+				<button onClick={logout} className="logout-btn">Logout</button>
+			</aside>
 
-			<h3 style={{ marginTop: 24 }}>Recent Orders</h3>
-			<ul>
-				{orders.map((o) => (
-					<li key={o.id}>#{o.order_number} - {o.status} - {o.total_amount}</li>
-				))}
-			</ul>
+			{/* Main Content */}
+			<main className="dashboard-content">
+				<Routes>
+					<Route path="products" element={<ProductsPage />} />
+					<Route path="orders" element={<OrdersPage />} />
+					<Route path="productions" element={<ProductionsPage />} />
+					<Route path="inventory" element={<InventoryPage />} />
+					<Route path="reports" element={<ReportsPage />} />
+					<Route path="*" element={<h2>Welcome, {user?.name || "Admin"} 👋</h2>} />
+				</Routes>
+			</main>
 		</div>
 	);
 }
