@@ -3,112 +3,91 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\Order;
-use App\Models\OrderItem;
 use App\Models\ProductionBatch;
+use App\Models\ProductionLog;
 use Illuminate\Http\Request;
 
-class OrderController extends Controller
+class ProductionController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Order::with(['customer.user', 'items.product']);
-
-        if ($request->user()->role === 'customer') {
-            $query->where('customer_id', $request->user()->customer->id);
-        }
+        $query = ProductionBatch::with(['order.customer.user', 'assignedStaff', 'logs']);
 
         if ($request->has('status')) {
             $query->where('status', $request->status);
         }
 
-        $orders = $query->orderBy('created_at', 'desc')
-                       ->paginate($request->get('per_page', 15));
+        $batches = $query->orderBy('created_at', 'desc')
+                         ->paginate($request->get('per_page', 15));
 
-        return response()->json($orders);
+        return response()->json($batches);
     }
 
     public function store(Request $request)
     {
         $request->validate([
-            'items' => 'required|array|min:1',
-            'items.*.product_id' => 'required|exists:products,id',
-            'items.*.quantity' => 'required|integer|min:1',
-            'delivery_date' => 'nullable|date|after:today',
+            'order_id' => 'required|exists:orders,id',
+            'assigned_staff_id' => 'nullable|exists:users,id',
             'notes' => 'nullable|string'
         ]);
 
-        $customer = $request->user()->customer;
-        
-        $order = Order::create([
-            'order_number' => Order::generateOrderNumber(),
-            'customer_id' => $customer->id,
-            'status' => 'pending',
-            'order_date' => now(),
-            'delivery_date' => $request->delivery_date,
-            'notes' => $request->notes,
-            'subtotal' => 0,
-            'tax_amount' => 0,
-            'total_amount' => 0
-        ]);
-
-        foreach ($request->items as $item) {
-            $product = \App\Models\Product::findOrFail($item['product_id']);
-            
-            OrderItem::create([
-                'order_id' => $order->id,
-                'product_id' => $product->id,
-                'quantity' => $item['quantity'],
-                'unit_price' => $product->price,
-                'total_price' => $product->price * $item['quantity']
-            ]);
-        }
-
-        $order->calculateTotals();
-
-        return response()->json($order->load(['items.product', 'customer.user']), 201);
-    }
-
-    public function show(Order $order)
-    {
-        $this->authorize('view', $order);
-        return response()->json($order->load(['items.product', 'customer.user', 'productionBatch']));
-    }
-
-    public function update(Request $request, Order $order)
-    {
-        $this->authorize('update', $order);
-
-        $request->validate([
-            'status' => 'sometimes|in:pending,approved,in_production,completed,cancelled,shipped,delivered',
-            'delivery_date' => 'nullable|date',
-            'notes' => 'nullable|string'
-        ]);
-
-        $order->update($request->only(['status', 'delivery_date', 'notes']));
-
-        // Create production batch if approved
-        if ($request->status === 'approved' && !$order->productionBatch) {
-            ProductionBatch::create([
-                'batch_number' => ProductionBatch::generateBatchNumber(),
-                'order_id' => $order->id,
-                'status' => 'planned'
-            ]);
-        }
-
-        return response()->json($order->load(['items.product', 'customer.user', 'productionBatch']));
-    }
-
-    public function approve(Order $order)
-    {
-        $order->update(['status' => 'approved']);
-
-        ProductionBatch::create([
+        $batch = ProductionBatch::create([
             'batch_number' => ProductionBatch::generateBatchNumber(),
-            'order_id' => $order->id,
-            'status' => 'planned'
+            'order_id' => $request->order_id,
+            'status' => 'planned',
+            'assigned_staff_id' => $request->assigned_staff_id,
+            'notes' => $request->notes,
         ]);
 
-        return response()->json($order->load(['productionBatch']));
+        return response()->json($batch->load(['order.customer.user', 'assignedStaff', 'logs']), 201);
+    }
+
+    public function show(ProductionBatch $production_batch)
+    {
+        return response()->json($production_batch->load(['order.customer.user', 'assignedStaff', 'logs']));
+    }
+
+    public function update(Request $request, ProductionBatch $production_batch)
+    {
+        $request->validate([
+            'status' => 'sometimes|in:planned,in_production,completed,cancelled,on_hold',
+            'start_date' => 'nullable|date',
+            'end_date' => 'nullable|date|after_or_equal:start_date',
+            'assigned_staff_id' => 'nullable|exists:users,id',
+            'notes' => 'nullable|string'
+        ]);
+
+        $production_batch->update($request->only(['status', 'start_date', 'end_date', 'assigned_staff_id', 'notes']));
+
+        return response()->json($production_batch->load(['order.customer.user', 'assignedStaff', 'logs']));
+    }
+
+    public function destroy(ProductionBatch $production_batch)
+    {
+        $production_batch->delete();
+        return response()->json(null, 204);
+    }
+
+    public function addLog(ProductionBatch $batch, Request $request)
+    {
+        $request->validate([
+            'stage' => 'required|string',
+            'hours_worked' => 'required|numeric|min:0',
+            'quantity_completed' => 'nullable|integer|min:0',
+            'notes' => 'nullable|string',
+            'log_date' => 'nullable|date',
+        ]);
+
+        $log = ProductionLog::create([
+            'batch_id' => $batch->id,
+            'staff_id' => $request->user()->id,
+            'stage' => $request->stage,
+            'hours_worked' => $request->hours_worked,
+            'quantity_completed' => $request->quantity_completed,
+            'notes' => $request->notes,
+            'log_date' => $request->log_date ?? now()->toDateString(),
+        ]);
+
+        return response()->json($log->load(['batch', 'staff']), 201);
     }
 }

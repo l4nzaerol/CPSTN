@@ -71,14 +71,11 @@ class OrderController extends Controller
 
     public function show(Order $order)
     {
-        $this->authorize('view', $order);
         return response()->json($order->load(['items.product', 'customer.user', 'productionBatch']));
     }
 
     public function update(Request $request, Order $order)
     {
-        $this->authorize('update', $order);
-
         $request->validate([
             'status' => 'sometimes|in:pending,approved,in_production,completed,cancelled,shipped,delivered',
             'delivery_date' => 'nullable|date',
