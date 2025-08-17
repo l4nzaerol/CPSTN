@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { authAPI } from '../services/api';
+import '../styles/auth.css';
 
 export default function Login() {
 	const navigate = useNavigate();
@@ -30,20 +31,65 @@ export default function Login() {
 	};
 
 	return (
-		<div style={{ maxWidth: 360, margin: '60px auto' }}>
-			<h2>Login</h2>
-			<form onSubmit={onSubmit}>
-				<div>
-					<label>Email</label>
-					<input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+		<div className="auth-container">
+			<div className="auth-card">
+				<div className="auth-header">
+					<div className="auth-logo">U</div>
+					<h1 className="auth-title">Welcome Back</h1>
+					<p className="auth-subtitle">Sign in to your account to continue</p>
 				</div>
-				<div style={{ marginTop: 8 }}>
-					<label>Password</label>
-					<input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+				
+				<form onSubmit={onSubmit} className="auth-form">
+					<div className="form-group">
+						<label className="form-label" htmlFor="email">Email Address</label>
+						<input
+							type="email"
+							id="email"
+							className={`form-input ${error ? 'error' : ''}`}
+							value={email}
+							onChange={(e) => setEmail(e.target.value)}
+							placeholder="Enter your email"
+							required
+						/>
+					</div>
+					
+					<div className="form-group">
+						<label className="form-label" htmlFor="password">Password</label>
+						<input
+							type="password"
+							id="password"
+							className={`form-input ${error ? 'error' : ''}`}
+							value={password}
+							onChange={(e) => setPassword(e.target.value)}
+							placeholder="Enter your password"
+							required
+						/>
+					</div>
+					
+					{error && (
+						<div className="alert alert-error">
+							{error}
+						</div>
+					)}
+					
+					<button 
+						type="submit" 
+						className={`btn btn-primary ${loading ? 'btn-loading' : ''}`}
+						disabled={loading}
+					>
+						{loading ? 'Signing in...' : 'Sign In'}
+					</button>
+				</form>
+				
+				<div className="auth-footer">
+					<p>
+						Don't have an account?{' '}
+						<Link to="/register" className="auth-link">
+							Create one now
+						</Link>
+					</p>
 				</div>
-				{error && <p style={{ color: 'red' }}>{error}</p>}
-				<button type="submit" disabled={loading} style={{ marginTop: 12 }}>{loading ? 'Signing in...' : 'Login'}</button>
-			</form>
+			</div>
 		</div>
 	);
 }
